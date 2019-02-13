@@ -1,24 +1,34 @@
-import React from 'react';
-import { Container, Button, Content, Form, Item, Input, Text } from 'native-base';
+import React from "react";
+import {
+  Container,
+  Button,
+  Content,
+  Form,
+  Item,
+  Input,
+  Text
+} from "native-base";
+import { graphql } from "react-apollo";
+import gql from "graphql-tag";
 
 class Register extends React.Component {
   constructor(props) {
     super(props);
 
     this.state = {
-      email: '',
+      email: "",
       emailError: false,
-      password: '',
+      password: "",
       passwordError: false,
-      confirmPassword: '',
-      confirmPasswordError: false,
+      confirmPassword: "",
+      confirmPasswordError: false
     };
   }
 
   handleInputChange = (field, value) => {
     const newState = {
       ...this.state,
-      [field]: value,
+      [field]: value
     };
     this.setState(newState);
   };
@@ -45,7 +55,20 @@ class Register extends React.Component {
     }
     this.setState({ passwordError: false, confirmPasswordError: false });
 
-    return this.props.screenProps.changeLoginState(true);
+    this.props
+      .signup(email, password)
+      .then(({ data }) => {
+        return this.props.screenProps.changeLoginState(true, data.signup.jwt);
+      })
+      .catch(e => {
+        // If the error message contains email or password we'll assume that's the error.
+        if (/email/i.test(e.message)) {
+          this.setState({ emailError: true });
+        }
+        if (/password/i.test(e.message)) {
+          this.setState({ passwordError: true });
+        }
+      });
   };
 
   render() {
@@ -59,7 +82,7 @@ class Register extends React.Component {
             <Item error={emailError}>
               <Input
                 placeholder="Email"
-                onChangeText={value => this.handleInputChange('email', value)}
+                onChangeText={value => this.handleInputChange("email", value)}
                 keyboardType="email-address"
                 autoCapitalize="none"
                 autoCorrect={false}
@@ -68,7 +91,9 @@ class Register extends React.Component {
             <Item error={passwordError}>
               <Input
                 placeholder="Password"
-                onChangeText={value => this.handleInputChange('password', value)}
+                onChangeText={value =>
+                  this.handleInputChange("password", value)
+                }
                 autoCapitalize="none"
                 autoCorrect={false}
                 secureTextEntry
@@ -77,7 +102,9 @@ class Register extends React.Component {
             <Item last error={confirmPasswordError}>
               <Input
                 placeholder="Confirm Password"
-                onChangeText={value => this.handleInputChange('confirmPassword', value)}
+                onChangeText={value =>
+                  this.handleInputChange("confirmPassword", value)
+                }
                 autoCapitalize="none"
                 autoCorrect={false}
                 secureTextEntry
@@ -87,7 +114,7 @@ class Register extends React.Component {
           <Button full onPress={this.handleSubmit}>
             <Text>Sign Up</Text>
           </Button>
-          <Button full transparent onPress={() => navigation.navigate('Login')}>
+          <Button full transparent onPress={() => navigation.navigate("Login")}>
             <Text>Sign In</Text>
           </Button>
         </Content>
@@ -96,4 +123,19 @@ class Register extends React.Component {
   }
 }
 
-export default Register;
+export default graphql(
+  gql`
+    mutation SignUp($email: String!, $password: String!) {
+      signup(email: $email, password: $password) {
+        _id
+        email
+        jwt
+      }
+    }
+  `,
+  {
+    props: ({ mutate }) => ({
+      signup: (email, password) => mutate({ variables: { email, password } })
+    })
+  }
+)(Register);

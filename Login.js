@@ -1,22 +1,35 @@
-import React from 'react';
-import { Container, Button, Content, Form, Item, Input, Text } from 'native-base';
+import React from "react";
+import {
+  Container,
+  Button,
+  Content,
+  Form,
+  Item,
+  Input,
+  Text
+} from "native-base";
+import { graphql } from "react-apollo";
+import gql from "graphql-tag";
+
+import "apollo-client";
+import "graphql";
 
 class Login extends React.Component {
   constructor(props) {
     super(props);
 
     this.state = {
-      email: '',
+      email: "",
       emailError: false,
-      password: '',
-      passwordError: false,
+      password: "",
+      passwordError: false
     };
   }
 
   handleInputChange = (field, value) => {
     const newState = {
       ...this.state,
-      [field]: value,
+      [field]: value
     };
     this.setState(newState);
   };
@@ -33,7 +46,20 @@ class Login extends React.Component {
     }
     this.setState({ passwordError: false });
 
-    return this.props.screenProps.changeLoginState(true);
+    this.props
+      .login(email, password)
+      .then(({ data }) => {
+        return this.props.screenProps.changeLoginState(true, data.login.jwt);
+      })
+      .catch(e => {
+        // If the error message contains email or password we'll assume that's the error.
+        if (/email/i.test(e.message)) {
+          this.setState({ emailError: true });
+        }
+        if (/password/i.test(e.message)) {
+          this.setState({ passwordError: true });
+        }
+      });
   };
 
   render() {
@@ -46,7 +72,7 @@ class Login extends React.Component {
             <Item error={emailError}>
               <Input
                 placeholder="Email"
-                onChangeText={value => this.handleInputChange('email', value)}
+                onChangeText={value => this.handleInputChange("email", value)}
                 keyboardType="email-address"
                 autoCapitalize="none"
                 autoCorrect={false}
@@ -55,7 +81,9 @@ class Login extends React.Component {
             <Item error={passwordError}>
               <Input
                 placeholder="Password"
-                onChangeText={value => this.handleInputChange('password', value)}
+                onChangeText={value =>
+                  this.handleInputChange("password", value)
+                }
                 autoCapitalize="none"
                 autoCorrect={false}
                 secureTextEntry
@@ -71,4 +99,19 @@ class Login extends React.Component {
   }
 }
 
-export default Login;
+export default graphql(
+  gql`
+    mutation LogIn($email: String!, $password: String!) {
+      login(email: $email, password: $password) {
+        _id
+        email
+        jwt
+      }
+    }
+  `,
+  {
+    props: ({ mutate }) => ({
+      login: (email, password) => mutate({ variables: { email, password } })
+    })
+  }
+)(Login);
